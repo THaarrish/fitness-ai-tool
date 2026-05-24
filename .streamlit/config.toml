@@ -1,0 +1,6 @@
+[theme]
+primaryColor = "#00FFCC"          # Electric Neon Teal for tabs/buttons
+backgroundColor = "#0B0E14"       # Deep dark background
+secondaryBackgroundColor = "#161B25" # Slightly lighter gray-blue for forms/sidebar
+textColor = "#FAFAFA"             # Crisp white text
+font = "sans serif"

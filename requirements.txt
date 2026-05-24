@@ -1,0 +1,8 @@
+python-dotenv
+streamlit
+streamlit-audiorec
+openai
+langchain
+requests
+astrapy
+
