@@ -1,8 +1,6 @@
-python-dotenv
-streamlit
-streamlit-audiorec
-openai
-langchain
-requests
-astrapy
-
+astrapy==2.2.1
+openai==2.38.0
+python-dotenv==1.2.2
+Requests==2.34.2
+streamlit==1.57.0
+streamlit_audiorec==0.1.3
