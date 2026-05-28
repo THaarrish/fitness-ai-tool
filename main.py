@@ -118,7 +118,7 @@ if __name__ == "__main__":
 
 import requests
 
-def ask_ai(profile: dict, question: str, session_id: str) -> str:
+def ask_ai1(profile: dict, question: str, session_id: str) -> str:
     URL = "http://localhost:7860/api/v1/run/b618b66f-9ae1-492f-8e0e-30109756d956"
     API_KEY = "sk-uewLuAmeqxMtERtgRkX-2DA3vZ4v_tC-BFYGoEvY6Y4"
 
@@ -160,7 +160,50 @@ def ask_ai(profile: dict, question: str, session_id: str) -> str:
     except requests.exceptions.RequestException as e:
         return f"Error connecting to Langflow: {e}"
 
+from openai import OpenAI
+import streamlit as st
 
+# Initialize the client (Point this to OpenAI, Groq, OpenRouter, or Local Ollama)
+client = OpenAI()
+
+#new code
+def ask_ai(profile: dict, question: str, session_id: str) -> str:
+    # 1. Format your user profile context dynamically
+    profile_context = build_profile_context(profile)
+
+    # 2. Establish the System instructions for the AI
+    system_instruction = (
+        "You are Coach AI, a personalized biometric gym and nutrition companion.\n"
+        f"Here is the user's current biometric profile data:\n{profile_context}\n\n"
+        "Instructions:\n"
+        "- Tailor all training, workout, and meal prep advice strictly to this data.\n"
+        "- Keep responses clear, actionable, motivating, and professional."
+    )
+
+    # 3. Construct the clean message history payload directly from Streamlit
+    # This completely eliminates the Langflow memory double-up bug!
+    api_messages = [{"role": "system", "content": system_instruction}]
+
+    # Append the historical conversation logs
+    for msg in st.session_state.chat_messages:
+        api_messages.append({"role": msg["role"], "content": msg["content"]})
+
+    # Append the current fresh question that the user just typed/spoke
+    api_messages.append({"role": "user", "content": question})
+
+    try:
+        # 4. Make a direct, stateless call to the model
+        response = client.chat.completions.create(
+            model="gpt-4o",
+            messages=api_messages,
+            temperature=0.7,
+        )
+
+        # Return the string output directly
+        return response.choices[0].message.content
+
+    except Exception as e:
+        return f"❌ Error generating AI response: {e}"
 
 
 
