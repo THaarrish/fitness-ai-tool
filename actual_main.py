@@ -1,5 +1,6 @@
 import uuid
 import base64
+import requests
 from main import ask_vision_ai
 import streamlit as st
 from profiles import create_profile, get_profile, get_notes
@@ -782,15 +783,250 @@ def ask_ai_function():
                     st.rerun()
 
 
+import streamlit as st
 
 
+def supplement_safety_checker_ui1():
+    # Inside-module import to completely prevent python circular tracking loops
+    from main import check_supplement_safety_rag
+
+    st.markdown("---")
+    st.header("⚡ Supplement Knowledge Center")
+    st.caption(
+        "Explore the common supplement knowledge Center")
+
+    # 1. Initialize our page routing session state variables
+    if "active_supplement" not in st.session_state:
+        st.session_state.active_supplement = None
+
+    # =========================================================================
+    # VIEW A: THE DETAIL PAGE VIEW
+    # =========================================================================
+    if st.session_state.active_supplement is not None:
+        selected_substance = st.session_state.active_supplement
+
+        # Simple back button navigation anchor link
+        if st.button("⬅️ Back to Library Grid", key="back_to_grid"):
+            st.session_state.active_supplement = None
+            st.rerun()
+
+        st.markdown(f"## 🧪 Deep-Dive Profile: **{selected_substance}**")
+
+        # Build out a clean structured card container layout for the RAG response
+        with st.container(border=True):
+            st.subheader("🔬 Clinical Evidence & Profile Synthesis")
+
+            # Initialize fallback user profile safeguards
+            if "profile" not in st.session_state or not st.session_state.profile:
+                st.session_state.profile = {"general": {"health_notes": "Allergic to milk"}, "goals": ["Muscle Gain"]}
+
+            with st.spinner(f"Querying vector database layers for {selected_substance}..."):
+                # Run your backend strict deterministic RAG compiler
+                rag_report = check_supplement_safety_rag(st.session_state.profile, selected_substance)
+
+                st.markdown("---")
+                st.markdown(rag_report)
+                st.markdown("---")
+                st.caption(
+                    "ℹ️ *Disclaimer: This analysis was generated dynamically by AI models, do consult doctor or certified professionals before consuming*")
+
+    # =========================================================================
+    # VIEW B: THE GENERAL DIRECTORY GRID VIEW
+    # =========================================================================
+    else:
+        st.info(
+            "### 📚 Welcome to the Library Directory\n"
+            "Select any performance supplement card below to run an instant automated semantic audit. "
+            "The system will query internal knowledge assets, and give you the overall detail about the supllements."
+        )
+
+        st.subheader("Available Compounds")
+
+        # Construct a beautiful visual 3-column grid layout dashboard
+        col1, col2, col3 = st.columns(3)
+
+        with col1:
+            with st.container(border=True):
+                st.markdown("### 🧬 Creatine")
+                st.caption("ATP Energy booster, muscle hydration, strength output scale-ups.")
+                if st.button("Read Detailed Profile →", key="view_creatine", width="stretch"):
+                    st.session_state.active_supplement = "Creatine Monohydrate"
+                    st.rerun()
+
+            with st.container(border=True):
+                st.markdown("### 💊 Beta-Alanine")
+                st.caption("Lactic acid buffer, muscular endurance enhancement, paresthesia triggers.")
+                if st.button("Read Detailed Profile →", key="view_beta", width="stretch"):
+                    st.session_state.active_supplement = "Beta-Alanine"
+                    st.rerun()
+
+        with col2:
+            with st.container(border=True):
+                st.markdown("### 🥛 Whey Protein")
+                st.caption("Fast-digesting dairy anabolic peptide matrix for tissue recovery.")
+                if st.button("Read Detailed Profile →", key="view_whey", width="stretch"):
+                    st.session_state.active_supplement = "Whey Protein"
+                    st.rerun()
+
+            with st.container(border=True):
+                st.markdown("### 🌿 Ashwagandha")
+                st.caption("Cortisol management adaptogen botanical for recovery optimization.")
+                if st.button("Read Detailed Profile →", key="view_ashwa", width="stretch"):
+                    st.session_state.active_supplement = "Ashwagandha"
+                    st.rerun()
+
+        with col3:
+            with st.container(border=True):
+                st.markdown("### ☕ Caffeine")
+                st.caption("Central nervous system stimulant targeting acute focus and caloric oxidation.")
+                if st.button("Read Detailed Profile →", key="view_caffeine", width="stretch"):
+                    st.session_state.active_supplement = "Caffeine / Pre-workout"
+                    st.rerun()
+
+            with st.container(border=True):
+                st.markdown("### 🧪 BCAAs")
+                st.caption("Branched chain isolation compounds targeting fasted muscle protection loops.")
+                if st.button("Read Detailed Profile →", key="view_bcaa", width="stretch"):
+                    st.session_state.active_supplement = "BCAA"
+                    st.rerun()
 
 
+def search_supplements_api(query: str) -> list:
+    api_key = os.getenv("USDA_API_KEY")
 
+    response = requests.get(
+        "https://api.nal.usda.gov/fdc/v1/foods/search",
+        params={
+            "query": query,
+            "api_key": api_key,
+            "pageSize": 50,  # fetch more so after filtering you still have enough
+        }
+    )
 
+    data = response.json()
 
+    # ── STRICT SUPPLEMENT KEYWORDS FILTER ──
+    supplement_keywords = [
+        "supplement", "vitamin", "mineral", "protein powder",
+        "creatine", "omega", "amino acid", "probiotic", "zinc",
+        "magnesium", "calcium", "iron", "collagen", "bcaa",
+        "whey", "casein", "pre-workout", "beta alanine",
+        "ashwagandha", "fish oil", "multivitamin", "electrolyte",
+        "caffeine", "melatonin", "turmeric", "biotin", "glutamine"
+    ]
 
+    # ── WORDS THAT MEAN IT'S A FOOD PRODUCT NOT A SUPPLEMENT ──
+    exclude_keywords = [
+        "peanut butter", "juice", "drink", "soda", "cereal",
+        "bread", "milk", "yogurt", "cheese", "butter", "sauce",
+        "soup", "snack", "cookie", "cake", "candy", "bar",
+        "chicken", "beef", "pork", "fish fillet", "egg",
+        "restaurant", "mcdonald", "subway", "starbucks"
+    ]
 
+    filtered = []
+    for food in data.get("foods", []):
+        name = food.get("description", "").lower()
+        category = food.get("foodCategory", "").lower()
+
+        # EXCLUDE if it matches any food product keyword
+        if any(ex in name for ex in exclude_keywords):
+            continue
+
+        # INCLUDE only if name OR category matches supplement keywords
+        if any(kw in name for kw in supplement_keywords) or \
+                any(kw in category for kw in ["supplement", "vitamin", "mineral"]):
+            filtered.append({
+                "name": food.get("description"),
+                "category": food.get("foodCategory", "Supplement")
+            })
+
+    # Return max 9 results for the 3x3 grid
+    return filtered[:9]
+def supplement_safety_checker_ui():
+    from main import check_supplement_safety_rag
+
+    st.header("⚡ Supplement Knowledge Centre")
+
+    if "active_supplement" not in st.session_state:
+        st.session_state.active_supplement = None
+    if "search_results" not in st.session_state:
+        st.session_state.search_results = []
+
+    # ─── DETAIL VIEW ─────────────────────────────
+    if st.session_state.active_supplement:
+        if st.button("⬅️ Back to Search"):
+            st.session_state.active_supplement = None
+            st.rerun()
+
+        st.markdown(f"## 🧪 {st.session_state.active_supplement}")
+        with st.container(border=True):
+            with st.spinner("Querying knowledge base..."):
+                rag_report = check_supplement_safety_rag(
+                    st.session_state.profile,
+                    st.session_state.active_supplement
+                )
+                st.markdown(rag_report)
+
+    # ─── SEARCH VIEW ─────────────────────────────
+    else:
+        # Search bar
+        col1, col2 = st.columns([4, 1])
+        with col1:
+            search_query = st.text_input(
+                "Search supplements",
+                placeholder="e.g. Creatine, Vitamin D, Omega-3..."
+            )
+        with col2:
+            search_btn = st.button("🔍 Search", use_container_width=True)
+
+        # Popular/featured compounds shown by default
+        # (replaces your current 6 hardcoded cards)
+        if not search_query:
+            st.subheader("⭐ Popular Compounds")
+            featured = [
+                ("🧬 Creatine", "ATP energy & strength"),
+                ("🥛 Whey Protein", "Muscle recovery"),
+                ("☕ Caffeine", "Focus & performance"),
+                ("💊 Beta-Alanine", "Endurance"),
+                ("🌿 Ashwagandha", "Stress & recovery"),
+                ("🧪 BCAAs", "Muscle protection"),
+            ]
+            col1, col2, col3 = st.columns(3)
+            cols = [col1, col2, col3]
+            for i, (name, caption) in enumerate(featured):
+                with cols[i % 3]:
+                    with st.container(border=True):
+                        st.markdown(f"### {name}")
+                        st.caption(caption)
+                        if st.button("View Profile →",
+                                     key=f"featured_{i}",
+                                     use_container_width=True):
+                            st.session_state.active_supplement = name
+                            st.rerun()
+
+        # Dynamic search results from API
+        if search_query and search_btn:
+            with st.spinner("Searching..."):
+                # Call USDA API to search
+                results = search_supplements_api(search_query)
+                st.session_state.search_results = results
+
+        # Render search results as cards
+        if st.session_state.search_results:
+            st.subheader(f"Results for '{search_query}'")
+            col1, col2, col3 = st.columns(3)
+            cols = [col1, col2, col3]
+            for i, result in enumerate(st.session_state.search_results[:9]):
+                with cols[i % 3]:
+                    with st.container(border=True):
+                        st.markdown(f"### {result['name']}")
+                        st.caption(result.get('category', 'Supplement'))
+                        if st.button("View Profile →",
+                                     key=f"result_{i}",
+                                     use_container_width=True):
+                            st.session_state.active_supplement = result['name']
+                            st.rerun()
 
 
 
@@ -953,12 +1189,13 @@ def forms():
 
         st.markdown("---")
 
-        if st.button("🏠 Dashboard", use_container_width=True):
-            st.session_state.page = "dashboard"
-            st.rerun()
+
 
         if st.button("📸 Food Scanner", use_container_width=True):
             st.session_state.page = "food_scanner"
+            st.rerun()
+        if st.button("Food Supplement Dictionary", use_container_width=True):
+            st.session_state.page= "Supplement Checker"
             st.rerun()
 
     # 3. Use Tabs in the main screen area to separate your features cleanly
@@ -1007,6 +1244,18 @@ def food_scanner_page():
 
     food_vision_analyzer()
 
+def food_supplemnet_page():
+
+    apply_futuristic_css()
+
+    st.title("📸 AI Food Supllement")
+
+    if st.button("← Back to Dashboard"):
+        st.session_state.page = "dashboard"
+        st.rerun()
+
+    st.markdown("---")
+    supplement_safety_checker_ui()
 
 
 
@@ -1034,3 +1283,5 @@ if __name__ == "__main__":
 
     elif st.session_state.page == "food_scanner":
         food_scanner_page()
+    elif st.session_state.page == "Supplement Checker":
+        food_supplemnet_page()
