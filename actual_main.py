@@ -461,17 +461,15 @@ def transcribe_voice(audio_bytes):
     return transcript.text
 def speak_text(text_to_speak):
     """Converts AI text response into audio bytes, splitting long text safely to avoid OpenAI's 4096-character limit."""
-    MAX_CHARS = 4000  # Set slightly below 4096 to be safe
+    MAX_CHARS = 4000
     combined_audio = b""  # Store the final concatenated audio bytes
 
-    # 1. Check if text is short enough to process normally
+    # Check if text is short enough to process normally
     if len(text_to_speak) <= MAX_CHARS:
         response = client.audio.speech.create(
             model="tts-1", voice="alloy", input=text_to_speak
         )
         return response.content
-
-    # 2. If it's too long, split it up safely by paragraphs so it doesn't cut off mid-sentence
     paragraphs = text_to_speak.split("\n")
     current_chunk = ""
 

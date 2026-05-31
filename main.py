@@ -40,6 +40,7 @@ def ask_macros_ai(profile, goals):
     return data["choices"][0]["message"]["content"]
 
 
+
 def build_profile_context(profile: dict) -> str:
     """
     Converts the raw profile dict into a clean, human-readable
@@ -118,47 +119,7 @@ if __name__ == "__main__":
 
 import requests
 
-def ask_ai1(profile: dict, question: str, session_id: str) -> str:
-    URL = "http://localhost:7860/api/v1/run/b618b66f-9ae1-492f-8e0e-30109756d956"
-    API_KEY = "sk-uewLuAmeqxMtERtgRkX-2DA3vZ4v_tC-BFYGoEvY6Y4"
 
-    # ✅ THE FIX: use the helper to build a clean, readable profile string
-    profile_context = build_profile_context(profile)
-
-    combined_input = (
-        f"{profile_context}\n\n"
-        f"User Request: {question}\n\n"
-        "Please give a detailed, personalised response based strictly on the profile above."
-    )
-
-    TWEAKS = {"session_id": session_id}
-
-    payload = {
-        "output_type": "chat",
-        "input_type": "chat",
-        "input_value": combined_input,
-        "tweaks": TWEAKS,
-    }
-
-    headers = {
-        "Content-Type": "application/json",
-        "x-api-key": API_KEY,
-    }
-
-    try:
-        response = requests.post(URL, json=payload, headers=headers)
-
-        if response.status_code == 200:
-            response_data = response.json()
-            try:
-                return response_data["outputs"][0]["outputs"][0]["results"]["message"]["text"]
-            except (KeyError, IndexError):
-                return response_data["outputs"][0]["outputs"][0]["results"]["text"]["data"]["text"]
-        else:
-            return f"Server Error ({response.status_code}): {response.text}"
-
-    except requests.exceptions.RequestException as e:
-        return f"Error connecting to Langflow: {e}"
 
 from openai import OpenAI
 import streamlit as st
@@ -188,7 +149,7 @@ def ask_ai(profile: dict, question: str, session_id: str) -> str:
     for msg in st.session_state.chat_messages:
         api_messages.append({"role": msg["role"], "content": msg["content"]})
 
-    # Append the current fresh question that the user just typed/spoke
+    # Append the current fresh question that the user just typed or spoke
     api_messages.append({"role": "user", "content": question})
 
     try:
