@@ -41,7 +41,7 @@ def ask_macros_ai(profile, goals):
 
 
 
-def build_profile_context(profile: dict) -> str:
+def build_profile_context1(profile: dict) -> str:
     """
     Converts the raw profile dict into a clean, human-readable
     block that the LLM can actually understand and act on.
@@ -100,7 +100,76 @@ def build_profile_context(profile: dict) -> str:
     ]
     return "\n".join(cleaned)
 
+def build_profile_context(profile: dict) -> str:
+    """
+    Converts the raw profile dict into a clean, human-readable
+    block that the LLM can actually understand and act on.
+    Dynamically pulls live notes from st.session_state.notes.
+    """
+    if not profile:
+        return "No user profile available."
 
+    # 1. Extract sub-dictionaries safely from profile
+    general = profile.get("general", {})
+    fitness = profile.get("fitness", {})
+    health = profile.get("health", {})
+
+    # 2. Handle 'goals' structure mismatch
+    raw_goals = profile.get("goals", [])
+    if isinstance(raw_goals, dict):
+        goals = raw_goals.get("goals", [])
+    else:
+        goals = raw_goals
+    goal_text = ", ".join(goals) if isinstance(goals, list) else str(goals)
+
+    # 3. Handle 'nutrition' structure mismatch and possible string types
+    nutrition = profile.get("nutrition", {})
+    if isinstance(nutrition, str):
+        try:
+            nutrition = json.loads(nutrition)
+        except json.JSONDecodeError:
+            nutrition = {}
+
+    # --- READ LIVE FROM YOUR NOTES COLLECTION IN STATE ---
+    # Grabs the list of dicts that your backend's get_notes() returns
+    session_notes = st.session_state.get("notes", [])
+    if isinstance(session_notes, list) and len(session_notes) > 0:
+        # Extract the 'text' string from every note object and join them with semicolons
+        extracted_notes = [n.get("text", "") for n in session_notes if n.get("text")]
+        final_notes_text = " | ".join(extracted_notes)
+    else:
+        # Fallback to profile properties if the floating notes list is empty
+        final_notes_text = health.get('notes', general.get('health_notes', 'None'))
+    # ----------------------------------------------------
+
+    lines = [
+        "=== USER PROFILE ===",
+        f"Name            : {general.get('name', 'N/A')}",
+        f"Age             : {general.get('age', 'N/A')} years",
+        f"Gender          : {general.get('gender', 'N/A')}",
+        f"Weight          : {general.get('weight', 'N/A')} kg",
+        f"Height          : {general.get('height', 'N/A')} cm",
+        f"Activity Level  : {general.get('activity_level', 'N/A')}",
+        f"Goals           : {goal_text}",
+        f"Experience Level: {fitness.get('experience_level', general.get('experience', 'N/A'))}",
+        f"Workout Days/Wk : {fitness.get('days_per_week', general.get('days_per_week', 'N/A'))}",
+        f"Preferred Split : {fitness.get('preferred_split', 'N/A')}",
+        f"Equipment Access: {fitness.get('equipment', 'N/A')}",
+        f"Calorie Target  : {nutrition.get('calories', 'N/A')} kcal",
+        f"Protein Target  : {nutrition.get('protein', 'N/A')} g",
+        f"Fat Target      : {nutrition.get('fat', 'N/A')} g",
+        f"Carbs Target    : {nutrition.get('carbs', 'N/A')} g",
+        f"Allergies       : {nutrition.get('allergies', 'None')}",
+        f"User Notes      : {final_notes_text}",  # <--- GPT-4o reads everything typed here!
+        "===================",
+    ]
+
+    # Filter out lines where the value is still 'N/A' or default 0 to keep prompt clean
+    cleaned = [
+        l for l in lines
+        if "N/A" not in l and ": 0 " not in l or l.startswith("===")
+    ]
+    return "\n".join(cleaned)
 
 # =========================================================
 # EXECUTION

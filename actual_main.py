@@ -445,6 +445,8 @@ def notes():
             st.rerun()
 
 
+
+
 # added codes for STT and TTS
 client = OpenAI()
 def transcribe_voice(audio_bytes):
