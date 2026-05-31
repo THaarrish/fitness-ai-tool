@@ -57,7 +57,7 @@ def onboarding_page():
         st.markdown(" ")  # Micro-spacing
         user_activity = st.select_slider(
             "🏃‍♂️ Daily Activity & Metabolic Level",
-            options=["Sedentary", "Lightly Active", "Moderately Active", "Very Active", "Extra Active"],
+            options=["Sedentary", "Lightly Active", "Moderately Active", "Very Active", "Super Active"],
             value="Moderately Active"
         )
 
